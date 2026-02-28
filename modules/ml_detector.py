@@ -8,7 +8,7 @@ from sklearn.ensemble import IsolationForest
 # ==============================
 # CONFIG
 # ==============================
-VT_API_KEY = "YOUR_API_KEY_HERE"
+VT_API_KEY = "a0e9a18a67d6c72fa04d0b0dbf5cca990b81b7f9e60fcc73af45900c351dd5a2"
 ENTROPY_THRESHOLD = 3.5
 
 
@@ -54,23 +54,37 @@ def calculate_entropy(domain):
 # ==============================
 # 3️⃣ LOCAL REPUTATION CHECK
 # ==============================
+
 def check_domain_reputation(domain):
-    known_bad_keywords = [
-        "malware", "phishing", "stealer", "ransom", "exploit", "c2", "command", "control",
-        "botnet", "free", "login","breach", "leak", "dark", "web", 
-        "hacker", "attack", "ddos", "scam", "fraud", "suspicious", "danger", "threat",
-        "free-login", "darkweb", "xyz" , "top", "club", "online" , "site", "website", "net",
-        "org", "info", "biz", "co", "io", "me", "us", "cc", "pw", "tk", "ml", "ga", "cf", "gq" ,
-        "drugs", "casino" , "apk", "crypter", "keylogger",
-        "miner", "ransomware", "spyware", "trojan", "virus", "worm", "backdoor", "ddos", "phishing", 
-        "scam", "fraud", "suspicious", "danger", "threat"
-    ]
+    # Split into parts to avoid "bad" matching "badger.com"
+    parts = domain.lower().split('.')
+    suspicious_tlds = {'xyz', 'top', 'pw', 'tk', 'ml', 'cf', 'gq'}
+    
+    # Check TLD
+    if parts[-1] in suspicious_tlds:
+        return True
+        
+    # Check Keywords
+    malicious_terms = {"malware", "c2", "stealer", "phish"}
+    return any(term in domain for term in malicious_terms) 
 
-    for keyword in known_bad_keywords:
-        if keyword in domain:
-            return True
+# def check_domain_reputation(domain):
+#     known_bad_keywords = [
+#         "malware", "phishing", "stealer", "ransom", "exploit", "c2", "command", "control",
+#         "botnet", "free", "login","breach", "leak", "dark", "web", 
+#         "hacker", "attack", "ddos", "scam", "fraud", "suspicious", "danger", "threat",
+#         "free-login", "darkweb", "xyz" , "top", "club", "online" , "site", "website", "net",
+#         "org", "info", "biz", "co", "io", "me", "us", "cc", "pw", "tk", "ml", "ga", "cf", "gq" ,
+#         "drugs", "casino" , "apk", "crypter", "keylogger",
+#         "miner", "ransomware", "spyware", "trojan", "virus", "worm", "backdoor", "ddos", "phishing", 
+#         "scam", "fraud", "suspicious", "danger", "threat"
+#     ]
 
-    return False
+#     for keyword in known_bad_keywords:
+#         if keyword in domain:
+#             return True
+
+#     return False
 
 
 # ==============================
@@ -79,7 +93,7 @@ def check_domain_reputation(domain):
 def check_virustotal_domain(domain):
 
     url = f"https://www.virustotal.com/api/v3/domains/{domain}"
-    headers = {"x-apikey": a0e9a18a67d6c72fa04d0b0dbf5cca990b81b7f9e60fcc73af45900c351dd5a2}
+    headers = {"x-apikey": VT_API_KEY}
 
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -147,19 +161,20 @@ def analyze_domains(domains):
 # ==============================
 # 6️⃣ ML ANOMALY DETECTION
 # ==============================
-def detect_anomaly(suspicious_log_count, suspicious_dns_count=0):
+def detect_anomaly(suspicious_log_count, suspicious_dns_count):
 
     # Weighted Risk Score
-    risk_score = (suspicious_log_count * 0.6) + (suspicious_dns_count * 0.4)
+    risk_score = min((suspicious_log_count * 2) + (suspicious_dns_count * 3) , 100)
 
     # Normal baseline data
     normal_data = np.array([
+        [0, 0],
         [1, 0],
         [2, 1],
         [1, 1],
         [3, 0],
         [2, 2],
-        [1, 0]
+        [0, 1]
     ])
 
     model = IsolationForest(contamination=0.2, random_state=42)
@@ -169,14 +184,14 @@ def detect_anomaly(suspicious_log_count, suspicious_dns_count=0):
     prediction = model.predict(test_sample)
 
     # Final Classification
-    if prediction[0] == -1 and risk_score > 5:
-        status = "HIGH RISK - MALICIOUS"
+    if prediction[0] == -1 and risk_score >= 50:
+        status = "CRITICAL - MALICIOUS"
     elif prediction[0] == -1:
-        status = "MEDIUM RISK - SUSPICIOUS"
-    elif risk_score > 5:
-        status = "MEDIUM RISK - SUSPICIOUS"
+        status = "HIGH - ANOMALOUS"
+    elif risk_score >= 30:
+        status = "MEDIUM - SUSPICIOUS"
     else:
-        status = "LOW RISK - NORMAL"
+        status = "LOW - NORMAL"
 
     return status, round(risk_score, 2)
 
@@ -196,10 +211,12 @@ def run_forensic_dns_pipeline(dump_file_path, suspicious_log_count):
 
     print("[+] Running ML anomaly detection...")
 
-    suspicious_logs =parse_log(args.log ) if args.log else []
-    suspicious_dns=[]
-    suspicious_logs_count = len(suspicious_logs)
-    suspicious_dns_count=len(suspicious_dns)
+    suspicious_log_count = suspicious_log_count  # This should be passed as an argument; using the provided value
+
+    # suspicious_logs = []  # parse_log is not defined; replaced with empty list
+    # suspicious_dns=[]
+    # suspicious_logs_count = len(suspicious_logs)
+    # suspicious_dns_count=len(suspicious_dns)
 
     status, risk_score = detect_anomaly(
         suspicious_log_count,
@@ -209,6 +226,7 @@ def run_forensic_dns_pipeline(dump_file_path, suspicious_log_count):
     return {
         "domains_analyzed": analysis_results,
         "suspicious_dns_count": suspicious_dns_count,
+        "suspicious_logs_count": suspicious_log_count,
         "final_status": status,
         "risk_score": risk_score
     }

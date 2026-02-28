@@ -1,0 +1,20 @@
+========== AUTOFORENX FORENSIC REPORT ==========
+
+Case Name: case001
+File Hash: 5ea871d003f8c8a6f2be3c5629cbdf3fd9e91b624037e970829687ad5cae7873
+
+----- FILE METADATA -----
+Size (bytes): 36600
+Created: 2026-02-26 20:25:32.345543
+Modified: 2026-02-26 20:25:50.837467
+Accessed: 2026-02-28 22:15:24.469805
+
+----- SUSPICIOUS LOGS -----
+Total Suspicious Logs: 1
+
+[2026-02-26 10:05:33] WARNING Multiple failed login attempts | user=root | src_ip=185.220.101.45 | attempts=9
+
+
+----- FINAL SEVERITY -----
+Status: LOW - NORMAL
+Risk Score: 2
