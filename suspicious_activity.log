@@ -1,9 +1,0 @@
-[2026-02-26 10:02:11] INFO  User login successful | user=admin | src_ip=192.168.1.10
-[2026-02-26 10:05:33] WARNING Multiple failed login attempts | user=root | src_ip=185.220.101.45 | attempts=9
-[2026-02-26 10:06:02] ALERT  Possible Brute Force Detected | src_ip=185.220.101.45 | port=22 | protocol=SSH
-[2026-02-26 10:08:47] WARNING Suspicious DNS Query | domain=xk29skd923ksd.com | entropy=4.95 | possible_dns_tunneling=true
-[2026-02-26 10:12:11] ALERT  Outbound connection to known malicious IP | dest_ip=45.133.1.22 | port=4444 | protocol=TCP
-[2026-02-26 10:14:22] ALERT  Suspicious Process Spawned | process=powershell.exe | parent=winword.exe | user=karan
-[2026-02-26 10:16:45] CRITICAL Registry Modification Detected | key=HKCU\Software\Microsoft\Windows\CurrentVersion\Run | value=Updater.exe
-[2026-02-26 10:18:05] WARNING Large Data Exfiltration Suspected | dest_ip=103.56.98.12 | bytes_sent=58765432
-[2026-02-26 10:21:11] CRITICAL Ransomware Behavior Detected | file_extension=.locked | affected_files=189
