@@ -1,0 +1,30 @@
+[2026-02-26 10:22:15] INFO    Service authentication success | user=service_acct | src_ip=10.0.0.5 | pid=4402
+[2026-02-26 10:22:45] WARNING File read access denied | file=C:\Secrets\config.ini | user=karan | pid=8819
+[2026-02-26 10:23:12] ALERT   Suspicious PowerShell execution | cmd="Invoke-WebRequest" | user=karan | pid=9921
+[2026-02-26 10:24:01] WARNING Unusual network traffic | dest_ip=192.168.1.50 | port=445 | pid=1024
+[2026-02-26 10:24:55] ALERT   Lateral movement attempt detected | src_ip=192.168.1.10 | dest_ip=192.168.1.50 | pid=1024
+[2026-02-26 10:25:30] WARNING Kernel-mode driver load attempt | driver=unknown_hook.sys | pid=0
+[2026-02-26 10:26:12] ALERT   Local privilege escalation | user=karan | target=SYSTEM | pid=1120
+[2026-02-26 10:27:05] WARNING Credential dumping attempt | process=lsass.exe | pid=778
+[2026-02-26 10:27:44] INFO    User logout | user=admin | session_duration=25m | pid=3392
+[2026-02-26 10:28:10] ALERT   Unsigned DLL injection | target=explorer.exe | pid=5512
+[2026-02-26 10:29:15] WARNING DNS cache poisoning attempt | domain=microsoft.com | pid=4402
+[2026-02-26 10:30:22] CRITICAL Security log cleared | user=SYSTEM | pid=42
+[2026-02-26 10:31:05] ALERT   Malicious script execution (Base64) | pid=9921
+[2026-02-26 10:32:11] WARNING Screen capture utility started | process=snippingtool.exe | pid=1204
+[2026-02-26 10:33:00] ALERT   Outbound connection to C2 server | dest_ip=185.190.5.2 | port=80 | pid=9921
+[2026-02-26 10:34:15] WARNING Scheduled task modification | task=\Microsoft\Windows\Update\Auto | pid=6621
+[2026-02-26 10:35:45] ALERT   Unauthorized WMI event subscription | pid=3310
+[2026-02-26 10:36:20] WARNING Clipboard content accessed | process=powershell.exe | pid=9921
+[2026-02-26 10:37:11] CRITICAL Volume Shadow Copy service disabled | pid=1120
+[2026-02-26 10:38:05] ALERT   Suspicious file renaming | source=database.sql | dest=database.sql.locked | pid=8820
+[2026-02-26 10:39:02] WARNING High CPU usage detected | process=crypt.exe | cpu_load=98% | pid=8820
+[2026-02-26 10:40:12] INFO    Active directory enumeration | user=karan | pid=9921
+[2026-02-26 10:41:05] ALERT   Network share discovery attempt | protocol=SMB | pid=1024
+[2026-02-26 10:42:30] WARNING Firewall rule modification | status=disabled | pid=1120
+[2026-02-26 10:43:15] CRITICAL System integrity check failed | file=ntoskrnl.exe | pid=0
+[2026-02-26 10:44:45] WARNING Keyboard hooking detected | process=keylogger.exe | pid=7712
+[2026-02-26 10:45:10] ALERT   Massive file encryption started | target_dir=C:\Users\karan\Documents | pid=8820
+[2026-02-26 10:46:01] CRITICAL Antivirus service terminated | process=av_service.exe | pid=552
+[2026-02-26 10:47:22] WARNING Beaconing signal detected | interval=60s | dest_ip=45.133.1.22 | pid=9921
+[2026-02-26 10:48:05] ALERT   System reboot initiated | user=SYSTEM | pid=1120
