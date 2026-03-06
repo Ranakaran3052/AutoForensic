@@ -63,14 +63,15 @@ def analyze_domains(domains):
     return analyzed_results, suspicious_dns_count
 
 
-def run_forensic_dns_pipeline(dump_file_path, suspicious_log_count):
+def run_forensic_dns_pipeline(dump_file_path):
 
     domains = extract_dns_from_dump(dump_file_path)
+    print(f"[+] Found {len(domains)} unique domains in the dump.")
 
     analysis_results, suspicious_dns_count = analyze_domains(domains)
 
     return {
         "domains_analyzed": analysis_results,
         "suspicious_dns_count": suspicious_dns_count,
-        "suspicious_logs_count": suspicious_log_count
+
     }

@@ -1,7 +1,3 @@
 reportlab
 scikit-learn
 tabulate
-
-
-python main.py --case case01 --file sample.txt --log logs.txt --dump memory.txt
-cmd structure

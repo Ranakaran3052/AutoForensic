@@ -1,8 +1,7 @@
 import os
 from datetime import datetime
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-)
+from reportlab.lib import styles
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle)
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
@@ -24,7 +23,8 @@ def generate_report(
     hash_value,
     metadata,
     suspicious_logs,
-    dns_results=None,
+    dns_results,
+    ram_results,
     suspicious_dns_count=0,
     final_status="N/A",
     risk_score=0
@@ -99,7 +99,7 @@ def generate_report(
     # =============================
     # FULL DNS SECTION
     # =============================
-    if dns_results is not None:
+    if dns_results and len(dns_results) > 0:
 
         elements.append(Paragraph("DNS Threat Intelligence Analysis", styles["Heading2"]))
         elements.append(Spacer(1, 0.2 * inch))
@@ -127,6 +127,55 @@ def generate_report(
 
         elements.append(dns_table)
         elements.append(Spacer(1, 0.4 * inch))
+   
+
+# =============================
+# RAM FORENSICS SECTION
+# =============================
+    elements.append(Paragraph("RAM Forensics Analysis", styles["Heading2"]))
+    elements.append(Spacer(1, 0.2 * inch))
+
+    if ram_results:
+        
+        # Running Processes
+        elements.append(Paragraph("<b>Running Processes:</b>", styles["Normal"]))
+        for p in ram_results.get("processes", [])[:20]:
+            elements.append(Paragraph(p, styles["Normal"]))
+
+        elements.append(Spacer(1, 0.15 * inch))
+
+        # Domains
+        elements.append(Paragraph("<b>Domains Extracted From Memory:</b>", styles["Normal"]))
+        for d in ram_results.get("domains", [])[:20]:
+            elements.append(Paragraph(d, styles["Normal"]))
+
+        elements.append(Spacer(1, 0.15 * inch))
+
+        # IP Addresses
+        elements.append(Paragraph("<b>IP Addresses Found:</b>", styles["Normal"]))
+        for ip in ram_results.get("ips", [])[:20]:
+            elements.append(Paragraph(ip, styles["Normal"]))
+
+        elements.append(Spacer(1, 0.15 * inch))
+
+        # URLs
+        elements.append(Paragraph("<b>URLs Found:</b>", styles["Normal"]))
+        for url in ram_results.get("urls", [])[:20]:
+            elements.append(Paragraph(url, styles["Normal"]))
+
+        elements.append(Spacer(1, 0.15 * inch))
+
+        # Suspicious Commands
+        elements.append(Paragraph("<b>Suspicious Commands:</b>", styles["Normal"]))
+        for cmd in ram_results.get("suspicious_commands", [])[:20]:
+            elements.append(Paragraph(cmd, styles["Normal"]))
+
+    else:
+        elements.append(Paragraph("No RAM forensic artifacts detected.", styles["Normal"]))
+
+    elements.append(Spacer(1, 0.4 * inch))
+
+
 
     # =============================
     # CHAIN OF CUSTODY SECTION
