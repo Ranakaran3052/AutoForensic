@@ -3,11 +3,14 @@ import re
 def parse_log(file_path):
 
     suspicious = []
+    email_list = set()  # To store unique email addresses
 
     # Regex patterns
     pid_pattern = r"\bpid[=: ]?(\d+)\b|\[(\d+)\]"
     ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
     domain_pattern = r"\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b"
+    email_pattern = r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"
+
     user_pattern = r"user\s+(\w+)|for\s+(\w+)"
     command_pattern = r"(powershell|cmd\.exe|bash|nc|netcat|python|perl|wget|curl)"
 
@@ -28,6 +31,10 @@ def parse_log(file_path):
             user = None
             if user_match:
                 user = user_match.group(1) or user_match.group(2)
+            
+             # ---------------- EMAIL ----------------
+            email_match = re.search(email_pattern, line)
+            email = email_match.group(0) if email_match else None
 
             # ---------------- DOMAIN ----------------
             domain_match = re.search(domain_pattern, line)
@@ -85,6 +92,9 @@ def parse_log(file_path):
                 if domain:
                     result += f" [DOMAIN: {domain}]"
 
+                if email:
+                    result += f" [EMAIL: {email}]"
+
                 if command:
                     result += f" [COMMAND: {command}]"
 
@@ -92,4 +102,4 @@ def parse_log(file_path):
 
                 suspicious.append(result)
 
-    return suspicious
+    return suspicious , list(email_list)

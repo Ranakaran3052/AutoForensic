@@ -26,6 +26,7 @@ def generate_report(
     dns_results,
     ram_results,
     suspicious_dns_count=0,
+    email_list=None,
     final_status="N/A",
     risk_score=0
 ):
@@ -174,6 +175,29 @@ def generate_report(
         elements.append(Paragraph("No RAM forensic artifacts detected.", styles["Normal"]))
 
     elements.append(Spacer(1, 0.4 * inch))
+
+    # =============================
+    # EMAIL ARTIFACTS
+    # =============================
+
+    elements.append(Paragraph("Extracted Email Addresses", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+
+    if email_list:
+
+      elements.append(
+        Paragraph(f"Total Emails Found: {len(email_list)}", styles["Normal"])
+       )
+    elements.append(Spacer(1, 8))
+
+    for email in email_list[:20]:   # limit to 20
+        elements.append(Paragraph(email, styles["Normal"]))
+
+    else:
+        elements.append(
+        Paragraph("No email artifacts detected.", styles["Normal"])
+    )
+        elements.append(Spacer(1, 20))
 
 
 

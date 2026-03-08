@@ -18,7 +18,7 @@ parser.add_argument("--case", help="Case name for report")
 parser.add_argument("--dashboard", action="store_true", help="Show forensic dashboard")
 
 # ... (imports remain the same)
-
+ 
 args = parser.parse_args()
 
 init_db()
@@ -35,7 +35,7 @@ elif args.case:
     suspicious_dns_count = 0
     status = "Unknown"
     risk_score = 0.0
-    ram_results = {"processes": [], "domains": [], "ips": [], "keywords": []}
+    ram_results = {"processes": [], "domains": [], "ips": [], "keywords": [] , "email_addresses": []}  # Added email_addresses key
 
     # ---------------- FILE HASH + METADATA ----------------
     if args.file:
@@ -47,7 +47,7 @@ elif args.case:
     # ---------------- LOG PARSING ----------------
     if args.log:
         print("[+] Parsing logs...")
-        suspicious_logs = parse_log(args.log)
+        suspicious_logs , email_list = parse_log(args.log)
 
     suspicious_log_count = len(suspicious_logs)
 
@@ -89,6 +89,7 @@ elif args.case:
         dns_results=analysis_results,
         ram_results=ram_results,
         suspicious_dns_count=suspicious_dns_count,
+        email_list=email_list,
         final_status=status,
         risk_score=risk_score
     )

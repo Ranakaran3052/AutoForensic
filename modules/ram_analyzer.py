@@ -15,7 +15,7 @@ def analyze_ram_dump_ultra(dump_file_path, output_json="forensic_report.json"):
         "processes": re.compile(rb"[a-zA-Z0-9_\-]+\.exe"),
         "ips": re.compile(rb"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
         "urls": re.compile(rb"https?://[^\s\x00-\x1f\x7f-\xff]+"),
-    }
+    } 
 
     suspicious_keywords = [
         b"powershell", b"mimikatz", b"cobaltstrike", b"meterpreter", 
