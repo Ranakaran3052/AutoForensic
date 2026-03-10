@@ -19,7 +19,7 @@ def show_dashboard():
     conn.close()
 
     print("\n" + "="*60)
-    print("          AutoForenX Enterprise Forensic Dashboard")
+    print(" AutoForenX Enterprise Forensic Dashboard")
     print("="*60)
 
     print(f"\nTotal Cases Investigated: {total_cases}")
