@@ -14,17 +14,18 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # CASES TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cases (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         case_id TEXT UNIQUE,
-        case_name TEXT,
+        file_hash TEXT,        -- New Column
+        log_count INTEGER,     -- New Column
+        risk_score REAL,       -- New Column
         investigator TEXT,
         status TEXT DEFAULT 'open',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
-    """)
+    """) 
 
     # EVIDENCE TABLE
     cursor.execute("""
@@ -73,18 +74,17 @@ def init_db():
 # INSERT FUNCTIONS
 # ==============================
 
-def insert_case(case_id, case_name, investigator="unknown"):
+def insert_case(case_id, file_hash, log_count, risk_score, investigator="unknown"):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT OR IGNORE INTO cases (case_id, case_name, investigator)
-    VALUES (?, ?, ?)
-    """, (case_id, case_name, investigator))
+    INSERT OR IGNORE INTO cases (case_id, file_hash, log_count, risk_score, investigator)
+    VALUES (?, ?, ?, ?, ?)
+    """, (case_id, file_hash, log_count, risk_score, investigator))
 
     conn.commit()
     conn.close()
-
 
 def insert_evidence(case_id, file_name, file_hash, file_type, file_size):
     conn = get_connection()
