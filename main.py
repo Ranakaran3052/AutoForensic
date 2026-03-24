@@ -160,7 +160,8 @@ elif args.case:
 
     print("\n[✓] Investigation completed successfully.")
     print(f"    Case     : {args.case}")
-    print(f"    Status   : {status}")
+    print(f"    Status   : {status}"),
+    print(f"    hashvalue: {hash_value}"),
     print(f"    Score    : {risk_score}/100")
     print(f"    Report   : reports/{args.case}_report.pdf")
 
