@@ -5,7 +5,12 @@ DB_PATH = "database/cases.db"
 
 def get_connection():
     os.makedirs("database", exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+    try:
+        return sqlite3.connect(DB_PATH)
+    except sqlite3.DatabaseError:
+        print("[!] Database corrupted. Recreating...")
+        os.remove(DB_PATH)
+        return sqlite3.connect(DB_PATH)
 
 # ==============================
 # INIT DATABASE
@@ -74,7 +79,8 @@ def init_db():
 # INSERT FUNCTIONS
 # ==============================
 
-def insert_case(case_id, file_hash, log_count, risk_score, investigator="unknown"):
+def insert_case(case_id, name="AutoForensic Scan", investigator="unknown",
+                file_hash="N/A", log_count=0, risk_score=0.0):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -123,11 +129,3 @@ def insert_log(case_id, log_line, severity="LOW"):
 
     conn.commit()
     conn.close()
-
-def get_connection():
-    try:
-        return sqlite3.connect(DB_PATH)
-    except sqlite3.DatabaseError:
-        print("[!] Database corrupted. Recreating...")
-        os.remove(DB_PATH)
-        return sqlite3.connect(DB_PATH)

@@ -27,7 +27,7 @@ def show_dashboard():
     # RECENT CASES
     # ==============================
     cursor.execute("""
-        SELECT case_id, case_name, created_at
+        SELECT case_id, investigator, created_at
         FROM cases
         ORDER BY id DESC
         LIMIT 10
@@ -40,12 +40,10 @@ def show_dashboard():
     # ==============================
     recent_cases = []
 
-    for case_id, case_name, created_at in rows:
-
-        case_id = case_id or "UNKNOWN-ID"
-        case_name = case_name or "Unnamed Case"
-
-        display_name = f"{case_id} | {case_name}"
+    for case_id, investigator, created_at in rows:
+        case_id      = case_id      or "UNKNOWN-ID"
+        investigator = investigator or "unknown"
+        display_name = f"{case_id} | {investigator}"
 
         # Count suspicious logs per case
         cursor.execute("""
