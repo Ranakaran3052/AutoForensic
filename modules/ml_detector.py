@@ -8,7 +8,7 @@ from sklearn.ensemble import IsolationForest
 
 # ── optional: pip install python-evtx ──
 try:
-    import Evtx.Evtx as evtx
+    import Evtx.Evtx as evtx # type: ignore
     import xml.etree.ElementTree as ET
     EVTX_AVAILABLE = True
 except ImportError:

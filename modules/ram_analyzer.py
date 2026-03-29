@@ -98,6 +98,35 @@ def analyze_ram_dump_ultra(
     print(f"[+] SHA-256: {sha256}")
 
     # ── Patterns ──────────────────────────────────────────────
+    # ==============================
+    # DELETED FILE ARTIFACTS
+    # Looks for MFT remnants, recycle bin paths, shadow copy
+    # references, and common deleted-file magic byte headers
+    # still resident in memory after deletion.
+    # ==============================
+    DELETED_FILE_MAGIC = {
+        b"\x4D\x5A":           "PE/EXE",        # MZ header
+        b"\x50\x4B\x03\x04":   "ZIP/Office",     # ZIP / DOCX / XLSX
+        b"\x25\x50\x44\x46":   "PDF",
+        b"\xFF\xD8\xFF":       "JPEG",
+        b"\x89\x50\x4E\x47":   "PNG",
+        b"\xD0\xCF\x11\xE0":   "OLE/DOC/XLS",   # Legacy Office
+        b"\x52\x61\x72\x21":   "RAR",
+        b"\x37\x7A\xBC\xAF":   "7-Zip",
+        b"\x1F\x8B":           "GZIP",
+        b"\x42\x4D":           "BMP",
+        b"\x47\x49\x46\x38":   "GIF",
+        b"\x53\x51\x4C\x69":   "SQLite DB",
+        b"\x4C\x00\x00\x00":   "Windows LNK",   # Shell link / shortcut
+    }
+
+    # ==============================
+    # USER CREDENTIALS & PASSWORDS
+    # Targets NTLM hashes, credential blobs, registry hive
+    # strings, and cleartext password context patterns.
+    # ==============================
+    CRED_CONTEXT_WINDOW = 80   # bytes captured around each hit
+
     patterns = {
         "processes": re.compile(rb"[a-zA-Z0-9_\-]+\.exe"),
         "ips":       re.compile(
@@ -105,8 +134,38 @@ def analyze_ram_dump_ultra(
                         rb"\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"
                      ),
         "urls":      re.compile(rb"https?://[^\s\x00-\x1f\x7f-\xff]+"),
+        "emails":    re.compile(rb"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
+        "suspicious_commands": re.compile(rb"(?:powershell|mimikatz|cobaltstrike|meterpreter|ransom|agenttesla|backdoor|lsass\.exe|updater\.exe|cmd\.exe|wscript\.exe|regsvr32\.exe|rundll32\.exe|nc\.exe|netcat\.exe|python\.exe|perl\.exe|wget\.exe|curl\.exe | \.onion)"),
         # ── fix 2: added domains pattern (was missing entirely) ──
         "domains":   re.compile(rb"(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}"),
+        "contacts":  re.compile(rb"(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"),
+
+        # ── Deleted file artifacts ─────────────────────────────
+        # MFT / $MFT entry signatures still in RAM
+        "mft_entries":       re.compile(rb"FILE[\x00-\xFF]{0,4}\x00{2}"),
+        # $Recycle.Bin / RECYCLER paths
+        "recycle_paths":     re.compile(rb"(?:\$Recycle\.Bin|\$RECYCLE\.BIN|RECYCLER)[^\x00\r\n]{0,120}", re.IGNORECASE),
+        # Volume shadow copy references
+        "shadow_refs":       re.compile(rb"\\\\?\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+[^\x00\r\n]{0,80}", re.IGNORECASE),
+        # Deleted file path remnants (tombstone strings)
+        "deleted_paths":     re.compile(rb"(?:[A-Za-z]:\\[^\x00\r\n]{4,120}\.(?:exe|dll|docx?|xlsx?|pdf|zip|rar|7z|lnk|bat|ps1|vbs|tmp))\x00", re.IGNORECASE),
+
+        # ── Credentials & passwords ────────────────────────────
+        # NTLM hash: 32 hex chars (LM or NT half)
+        "ntlm_hashes":       re.compile(rb"[0-9a-fA-F]{32}:[0-9a-fA-F]{32}"),
+        # Net-NTLMv2 challenge/response blob prefix
+        "netntlm_blobs":     re.compile(rb"NTLMSSP\x00[\x01-\x03]\x00{3}[\x00-\xFF]{12,200}"),
+        # SAM / LSASS credential key strings
+        "lsass_strings":     re.compile(rb"(?:SAMKey|LSASS|NL\$KM|DPAPI|MasterKey|CryptProtect)[^\x00\r\n]{0,80}", re.IGNORECASE),
+        # Cleartext password context: keyword followed by printable value
+        "cleartext_creds":   re.compile(rb"(?:password|passwd|pwd|pass|secret|token|apikey|api_key|auth_token|Authorization)"
+                                        rb"[\s:='\"\x00]{1,8}([\x20-\x7E]{4,64})", re.IGNORECASE),
+        # Windows credential store / vault blobs
+        "cred_vault":        re.compile(rb"Windows Credentials[\x00-\xFF]{0,4}|vcrd[\x00-\xFF]{2}|\.vcrd\x00", re.IGNORECASE),
+        # Base64-encoded credential blobs (≥32 chars, common in tokens/cookies)
+        "b64_creds":         re.compile(rb"(?:eyJ|TVqQ|AAAA)[A-Za-z0-9+/]{32,}={0,2}"),
+        # Browser saved-password sqlite key pattern
+        "browser_creds":     re.compile(rb"(?:logins\.json|key4\.db|Login Data|Cookies|Web Data)[^\x00]{0,60}", re.IGNORECASE),
     }
 
     suspicious_keywords = [
@@ -117,7 +176,16 @@ def analyze_ram_dump_ultra(
         b"perl.exe",   b"wget.exe",  b"curl.exe",
     ]
 
-    results_set = {k: set() for k in ["processes", "ips", "urls", "domains", "keywords"]}
+    results_set = {k: set() for k in [
+        "processes", "ips", "urls", "domains", "keywords",
+        "suspicious_commands", "emails", "contacts",
+        # deleted-file artifact keys
+        "mft_entries", "recycle_paths", "shadow_refs", "deleted_paths",
+        "deleted_file_magic",
+        # credential keys
+        "ntlm_hashes", "netntlm_blobs", "lsass_strings",
+        "cleartext_creds", "cred_vault", "b64_creds", "browser_creds",
+    ]}
 
     CHUNK_SIZE = 1024 * 1024 * 40  # 40 MB
     OVERLAP    = 1024
@@ -156,10 +224,74 @@ def analyze_ram_dump_ultra(
                 for d in patterns["domains"].findall(chunk):
                     results_set["domains"].add(d.decode(errors="ignore").lower())
 
+                for e in patterns["emails"].findall(chunk):
+                    results_set["emails"].add(e.decode(errors="ignore").lower())
+
+                for sc in patterns["suspicious_commands"].findall(chunk):
+                    results_set["suspicious_commands"].add(sc.decode(errors="ignore").lower())
+    
+
+                for n in patterns["contacts"].findall(chunk):
+                    results_set["contacts"].add(n.decode(errors="ignore"))
+                
+
                 chunk_lower = chunk.lower()
                 for key in suspicious_keywords:
                     if key in chunk_lower:
                         results_set["keywords"].add(key.decode(errors="ignore"))
+
+                # ── Deleted file artifacts ─────────────────────
+                for match in patterns["mft_entries"].finditer(chunk):
+                    offset = match.start()
+                    snippet = chunk[offset:offset+16].hex()
+                    results_set["mft_entries"].add(f"offset~{bytes_read - len(chunk) + offset}|{snippet}")
+
+                for p in patterns["recycle_paths"].findall(chunk):
+                    results_set["recycle_paths"].add(p.decode(errors="ignore").strip("\x00"))
+
+                for s in patterns["shadow_refs"].findall(chunk):
+                    results_set["shadow_refs"].add(s.decode(errors="ignore").strip("\x00"))
+
+                for dp in patterns["deleted_paths"].findall(chunk):
+                    results_set["deleted_paths"].add(dp.decode(errors="ignore").strip("\x00"))
+
+                # Magic-byte scan for deleted file headers in RAM
+                for magic, ftype in DELETED_FILE_MAGIC.items():
+                    pos = 0
+                    while True:
+                        pos = chunk.find(magic, pos)
+                        if pos == -1:
+                            break
+                        abs_offset = bytes_read - len(chunk) + pos
+                        results_set["deleted_file_magic"].add(
+                            f"{ftype}@offset:{abs_offset}"
+                        )
+                        pos += len(magic)
+
+                # ── Credentials & passwords ────────────────────
+                for h in patterns["ntlm_hashes"].findall(chunk):
+                    results_set["ntlm_hashes"].add(h.decode(errors="ignore"))
+
+                for blob in patterns["netntlm_blobs"].findall(chunk):
+                    results_set["netntlm_blobs"].add(blob[:32].hex() + "…")
+
+                for ls in patterns["lsass_strings"].findall(chunk):
+                    results_set["lsass_strings"].add(ls.decode(errors="ignore").strip())
+
+                for m in patterns["cleartext_creds"].finditer(chunk):
+                    keyword = chunk[max(0, m.start()-CRED_CONTEXT_WINDOW):m.start()].decode(errors="ignore")[-20:]
+                    value   = m.group(1).decode(errors="ignore")
+                    results_set["cleartext_creds"].add(f"{keyword.strip()}={value}")
+
+                for cv in patterns["cred_vault"].findall(chunk):
+                    results_set["cred_vault"].add(cv.decode(errors="ignore").strip("\x00"))
+
+                for b64 in patterns["b64_creds"].findall(chunk):
+                    entry = b64.decode(errors="ignore")
+                    results_set["b64_creds"].add(entry[:60] + ("…" if len(entry) > 60 else ""))
+
+                for bc in patterns["browser_creds"].findall(chunk):
+                    results_set["browser_creds"].add(bc.decode(errors="ignore").strip("\x00"))
 
                 # fix 4: overlap seek only when a full chunk was read
                 if len(chunk) == CHUNK_SIZE:
@@ -184,6 +316,20 @@ def analyze_ram_dump_ultra(
             "urls":          final_results["urls"],
             "domains":       final_results["domains"],
             "keywords":      final_results["keywords"],
+            # Deleted-file evidence
+            "mft_entries":        final_results["mft_entries"],
+            "recycle_paths":      final_results["recycle_paths"],
+            "shadow_refs":        final_results["shadow_refs"],
+            "deleted_paths":      final_results["deleted_paths"],
+            "deleted_file_magic": final_results["deleted_file_magic"],
+            # Credential evidence
+            "ntlm_hashes":        final_results["ntlm_hashes"],
+            "netntlm_blobs":      final_results["netntlm_blobs"],
+            "lsass_strings":      final_results["lsass_strings"],
+            "cleartext_creds":    final_results["cleartext_creds"],
+            "cred_vault":         final_results["cred_vault"],
+            "b64_creds":          final_results["b64_creds"],
+            "browser_creds":      final_results["browser_creds"],
             # Alias expected by generate_report()
             "suspicious_commands": [kw for kw in final_results["keywords"]],
         }
