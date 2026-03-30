@@ -57,7 +57,7 @@ def build_styles():
             "ReportTitle",
             parent=base["Title"],
             fontSize=20,
-            textColor=colors.HexColor("#1A252F"),
+            textColor=colors.black,
             spaceAfter=6,
             alignment=TA_CENTER,
         ),
@@ -65,7 +65,7 @@ def build_styles():
             "SectionHeading",
             parent=base["Heading2"],
             fontSize=13,
-            textColor=colors.HexColor("#1A252F"),
+            textColor=colors.black,
             spaceBefore=14,
             spaceAfter=6,
             borderPad=4,
@@ -74,7 +74,7 @@ def build_styles():
             "SubHeading",
             parent=base["Heading3"],
             fontSize=10,
-            textColor=colors.HexColor("#2C3E50"),
+            textColor=colors.black,
             spaceBefore=8,
             spaceAfter=4,
         ),
@@ -83,7 +83,7 @@ def build_styles():
             parent=base["Normal"],
             fontSize=8.5,
             leading=13,
-            textColor=colors.HexColor("#2C3E50"),
+            textColor=colors.black,
         ),
         "SmallMono": ParagraphStyle(
             "SmallMono",
@@ -91,19 +91,20 @@ def build_styles():
             fontName="Courier",
             fontSize=7.5,
             leading=11,
-            textColor=colors.HexColor("#2C3E50"),
+            textColor=colors.black,
         ),
         "Severity": ParagraphStyle(
             "Severity",
             parent=base["Normal"],
             fontSize=11,
             fontName="Helvetica-Bold",
+            textColor=colors.black,
         ),
         "Caption": ParagraphStyle(
             "Caption",
             parent=base["Normal"],
             fontSize=7,
-            textColor=colors.grey,
+            textColor=colors.black,
             alignment=TA_CENTER,
         ),
     }
@@ -159,10 +160,11 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
         ("TEXTCOLOR",   (0, 0), (-1, 0), colors.white),
         ("FONTNAME",    (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE",    (0, 0), (-1, -1), 8.5),
+        ("TEXTCOLOR",   (0, 1), (-1, -1), colors.black),          # ← data rows black
         ("GRID",        (0, 0), (-1, -1), 0.4, colors.HexColor("#BDC3C7")),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#F2F3F4"), colors.white]),
         ("ALIGN",       (1, 0), (1, -1), "CENTER"),
-        # Colour-code the classification rows
+        # Colour-code the classification rows (override black only for these)
         ("TEXTCOLOR",   (0, 3), (-1, 3), colors.HexColor("#C0392B")),
         ("TEXTCOLOR",   (0, 4), (-1, 4), colors.HexColor("#E67E22")),
         ("TEXTCOLOR",   (0, 5), (-1, 5), colors.HexColor("#F39C12")),
@@ -197,27 +199,27 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
 
         # Wrap long domain in monospace paragraph
         domain_para = Paragraph(
-            f'<font name="Courier" size="7">{domain}</font>',
+            f'<font name="Courier" size="7" color="#000000">{domain}</font>',
             custom_styles["Body"]
         )
         reasons_text = "; ".join(reasons) if reasons else "—"
         reasons_para = Paragraph(
-            f'<font size="7">{reasons_text}</font>',
+            f'<font size="7" color="#000000">{reasons_text}</font>',
             custom_styles["Body"]
         )
 
-        table_data.append([domain_para, classification, str(score), str(entropy), reasons_para])
+        table_data.append([domain_para, classification, str(score), str(entropy), reasons_para]) # pyright: ignore[reportArgumentType]
 
         # Row background based on classification
         c = classification.upper()
         if c == "MALICIOUS":
-            row_colors.append(colors.HexColor("#FADBD8"))
+            row_colors.append(colors.HexColor("#86160B"))
         elif c == "SUSPICIOUS":
-            row_colors.append(colors.HexColor("#FDEBD0"))
+            row_colors.append(colors.HexColor("#A37718"))
         elif c == "LOW-RISK":
-            row_colors.append(colors.HexColor("#FEF9E7"))
+            row_colors.append(colors.HexColor("#0F2774"))
         else:
-            row_colors.append(colors.HexColor("#EAFAF1"))
+            row_colors.append(colors.HexColor("#26750E"))
 
     col_widths = [2.1*inch, 1.0*inch, 0.7*inch, 0.7*inch, 2.5*inch]
     dns_table = Table(table_data, colWidths=col_widths, repeatRows=1)
@@ -227,6 +229,7 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
         ("TEXTCOLOR",    (0, 0), (-1, 0), colors.white),
         ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE",     (0, 0), (-1, -1), 8),
+        ("TEXTCOLOR",    (0, 1), (-1, -1), colors.black),          # ← data rows black
         ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#BDC3C7")),
         ("VALIGN",       (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING",   (0, 0), (-1, -1), 4),
@@ -264,11 +267,11 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
 
             card_data = [
                 [
-                    Paragraph(f'<font name="Courier" size="8"><b>{domain}</b></font>',
+                    Paragraph(f'<font name="Courier" size="8" color="#000000"><b>{domain}</b></font>',
                               custom_styles["Body"]),
                     Paragraph(
-                        f'<font color="{label_color.hexval()}" size="8"><b>{classification}</b></font>  '
-                        f'Score: <font color="{bar_color.hexval()}"><b>{score}/100</b></font>  '
+                        f'<font color="#{label_color.hexval()[2:].upper()}" size="8"><b>{classification}</b></font>  '
+                        f'Score: <font color="#{bar_color.hexval()[2:].upper()}"><b>{score}/100</b></font>  '
                         f'Entropy: {entropy}',
                         custom_styles["Body"]
                     ),
@@ -286,6 +289,7 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
             card.setStyle(TableStyle([
                 ("BACKGROUND",   (0, 0), (-1, 0), colors.HexColor("#EBF5FB")),
                 ("BACKGROUND",   (0, 1), (-1, 1), colors.white),
+                ("TEXTCOLOR",    (0, 0), (-1, -1), colors.black),
                 ("BOX",          (0, 0), (-1, -1), 0.8, colors.HexColor("#2980B9")),
                 ("LINEBELOW",    (0, 0), (-1, 0), 0.5, colors.HexColor("#AED6F1")),
                 ("FONTSIZE",     (0, 0), (-1, -1), 8),
@@ -321,6 +325,7 @@ def build_dns_analysis_section(elements, base_styles, custom_styles, dns_results
             ("TEXTCOLOR",   (0, 0), (-1, 0), colors.white),
             ("FONTNAME",    (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE",    (0, 0), (-1, -1), 8),
+            ("TEXTCOLOR",   (0, 1), (-1, -1), colors.black),
             ("GRID",        (0, 0), (-1, -1), 0.4, colors.HexColor("#D2B4DE")),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#F5EEF8"), colors.white]),
             ("TOPPADDING",  (0, 0), (-1, -1), 5),
@@ -389,6 +394,7 @@ def generate_report(
     info_table.setStyle(TableStyle([
         ("FONTNAME",  (0, 0), (0, -1), "Helvetica-Bold"),
         ("FONTSIZE",  (0, 0), (-1, -1), 8.5),
+        ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
         ("GRID",      (0, 0), (-1, -1), 0.3, colors.HexColor("#BDC3C7")),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1),
          [colors.HexColor("#EBF5FB"), colors.white]),
@@ -408,8 +414,9 @@ def generate_report(
     sev_table.setStyle(TableStyle([
         ("FONTNAME",     (0, 0), (0, -1), "Helvetica-Bold"),
         ("FONTSIZE",     (0, 0), (-1, -1), 9),
+        ("TEXTCOLOR",    (0, 0), (-1, -1), colors.black),
         ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#BDC3C7")),
-        ("TEXTCOLOR",    (1, 0), (1, 0), sev_color),
+        ("TEXTCOLOR",    (1, 0), (1, 0), sev_color),              # status value keeps color
         ("FONTNAME",     (1, 0), (1, 0), "Helvetica-Bold"),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1),
          [colors.HexColor("#FDEDEC"), colors.HexColor("#FEF9E7")]),
@@ -428,6 +435,7 @@ def generate_report(
             ("TEXTCOLOR",   (0, 0), (-1, 0), colors.white),
             ("FONTNAME",    (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE",    (0, 0), (-1, -1), 8.5),
+            ("TEXTCOLOR",   (0, 1), (-1, -1), colors.black),
             ("GRID",        (0, 0), (-1, -1), 0.3, colors.HexColor("#BDC3C7")),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1),
              [colors.HexColor("#F2F3F4"), colors.white]),
@@ -444,8 +452,15 @@ def generate_report(
     ))
     elements.append(Spacer(1, 0.1 * inch))
     for log in suspicious_logs[:20]:
+        if isinstance(log, dict):
+            log_text = log.get("message") or log.get("line") or str(log)
+        elif isinstance(log, (list, tuple)):
+            log_text = " | ".join(str(x) for x in log)
+        else:
+            log_text = str(log)
+        log_text = log_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         elements.append(Paragraph(
-            f'<font name="Courier" size="7.5">• {log}</font>',
+            f'<font name="Courier" size="7.5" color="#000000">• {log_text}</font>',
             custom_styles["Body"]
         ))
 
@@ -467,18 +482,33 @@ def generate_report(
             ("IP Addresses Found",            "ips"),
             ("URLs Found",                    "urls"),
             ("Suspicious Commands",           "suspicious_commands"),
+            ("Email Addresses",               "emails"),
+            ("Contact Numbers",               "contacts"),
+            ("NTLM Hashes",                   "ntlm_hashes"),
+            ("Cleartext Credentials",         "cleartext_creds"),
+            ("Browser Credential Files",      "browser_creds"),
+            ("LSASS / DPAPI Strings",         "lsass_strings"),
+            ("Deleted File Paths",            "deleted_paths"),
+            ("Recycle Bin Paths",             "recycle_paths"),
+            ("Shadow Copy References",        "shadow_refs"),
+            ("Deleted File Magic Bytes",      "deleted_file_magic"),
         ]
         for label, key in subsections:
             items = ram_results.get(key, [])
+            if not items:
+                continue
             elements.append(Paragraph(f"<b>{label}:</b>", custom_styles["SubHeading"]))
-            if items:
-                for item in items[:40]:
-                    elements.append(Paragraph(
-                        f'<font name="Courier" size="7.5">• {item}</font>',
-                        custom_styles["Body"]
-                    ))
-            else:
-                elements.append(Paragraph("None detected.", custom_styles["Body"]))
+            for item in items[:40]:
+                safe = str(item).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                elements.append(Paragraph(
+                    f'<font name="Courier" size="7.5" color="#000000">• {safe}</font>',
+                    custom_styles["Body"]
+                ))
+            if len(items) > 40:
+                elements.append(Paragraph(
+                    f'<i>... and {len(items) - 40} more (see JSON report for full list)</i>',
+                    custom_styles["Body"]
+                ))
             elements.append(Spacer(1, 0.1 * inch))
     else:
         elements.append(Paragraph("No RAM forensic artifacts detected.", custom_styles["Body"]))
@@ -492,8 +522,9 @@ def generate_report(
         ))
         elements.append(Spacer(1, 0.08 * inch))
         for email in email_list[:40]:
+            safe_email = str(email).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
             elements.append(Paragraph(
-                f'<font name="Courier" size="7.5">• {email}</font>',
+                f'<font name="Courier" size="7.5" color="#000000">• {safe_email}</font>',
                 custom_styles["Body"]
             ))
     else:
@@ -516,6 +547,7 @@ def generate_report(
         ("FONTNAME",    (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTNAME",    (0, 1), (0, -1), "Helvetica-Bold"),
         ("FONTSIZE",    (0, 0), (-1, -1), 8.5),
+        ("TEXTCOLOR",   (0, 1), (-1, -1), colors.black),
         ("GRID",        (0, 0), (-1, -1), 0.4, colors.HexColor("#BDC3C7")),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1),
          [colors.HexColor("#F2F3F4"), colors.white]),
@@ -528,4 +560,3 @@ def generate_report(
     doc.build(elements)
     print(f"[✓] Enterprise PDF Report Generated: {pdf_filename}")
     return pdf_filename
-

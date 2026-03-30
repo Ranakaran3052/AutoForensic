@@ -133,12 +133,43 @@ def analyze_ram_dump_ultra(
                         rb"\b(?:10|172|192|198|72|29|162|171)"
                         rb"\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"
                      ),
-        "urls":      re.compile(rb"https?://[^\s\x00-\x1f\x7f-\xff]+"),
-        "emails":    re.compile(rb"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
-        "suspicious_commands": re.compile(rb"(?:powershell|mimikatz|cobaltstrike|meterpreter|ransom|agenttesla|backdoor|lsass\.exe|updater\.exe|cmd\.exe|wscript\.exe|regsvr32\.exe|rundll32\.exe|nc\.exe|netcat\.exe|python\.exe|perl\.exe|wget\.exe|curl\.exe | \.onion)"),
-        # ── fix 2: added domains pattern (was missing entirely) ──
-        "domains":   re.compile(rb"(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}"),
-        "contacts":  re.compile(rb"(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"),
+
+        # URLs: must have a valid hostname after scheme, no raw punctuation-only paths
+        "urls":      re.compile(
+                        rb"https?://"
+                        rb"[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+"  # valid URI chars only
+                        rb"(?<![\"'<>,;)\]\s])"                        # strip trailing junk
+                     ),
+
+        # Emails: stricter — require proper TLD (2-6 alpha chars), no numeric-only domains
+        "emails":    re.compile(
+                        rb"[a-zA-Z0-9][a-zA-Z0-9._%+\-]{1,63}"
+                        rb"@"
+                        rb"[a-zA-Z0-9][a-zA-Z0-9.\-]{0,63}"
+                        rb"\.[a-zA-Z]{2,6}\b"
+                     ),
+
+        "suspicious_commands": re.compile(
+                        rb"(?:powershell|mimikatz|cobaltstrike|meterpreter|ransom|agenttesla"
+                        rb"|backdoor|lsass\.exe|updater\.exe|cmd\.exe|wscript\.exe"
+                        rb"|regsvr32\.exe|rundll32\.exe|nc\.exe|netcat\.exe|python\.exe"
+                        rb"|perl\.exe|wget\.exe|curl\.exe|\.onion)"
+                     ),
+
+        # Domains: require at least one letter in the label (blocks -.10.bq style noise),
+        # minimum 4-char TLD-bearing hostname, known real TLD suffix
+        "domains":   re.compile(
+                        rb"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)"
+                        rb"+(?:com|net|org|edu|gov|mil|int|io|co|uk|de|fr|ru|cn|br|au"
+                        rb"|jp|in|nl|se|no|fi|dk|pl|cz|hu|ro|bg|hr|sk|si|lt|lv|ee"
+                        rb"|info|biz|name|mobi|travel|museum|onion|xyz|top|site|live"
+                        rb"|online|store|tech|app|dev|cloud|media|news|blog|shop)\b"
+                     ),
+
+        # Contacts: stricter — require minimum 7 digits, disallow all-zero numbers
+        "contacts":  re.compile(
+                        rb"\b(\+?(?:[1-9]\d{0,2}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4,})\b"
+                     ),
 
         # ── Deleted file artifacts ─────────────────────────────
         # MFT / $MFT entry signatures still in RAM
@@ -299,6 +330,82 @@ def analyze_ram_dump_ultra(
 
         print(f"\n\n[✓] Scan complete for case: {case_name}")
 
+        # ── Post-extraction noise filters ─────────────────────
+        # Domains: remove anything starting with punctuation, pure
+        # numbers, or JS/HTML fragments left by the regex
+        def _clean_domains(raw: set) -> set:
+            out = set()
+            skip_prefixes = ("-", ".", "_", "/", "\\", "*", "?", "#", "!")
+            for d in raw:
+                if not d or len(d) < 4:
+                    continue
+                if d[0] in skip_prefixes:
+                    continue
+                # Must contain at least one letter in first label
+                first_label = d.split(".")[0]
+                if not any(c.isalpha() for c in first_label):
+                    continue
+                # Skip obvious JS/code fragments
+                if any(x in d for x in ("(", ")", "{", "}", "[", "]",
+                                         "=", "<", ">", '"', "'")):
+                    continue
+                out.add(d)
+            return out
+
+        # URLs: remove anything with no real path content after scheme
+        def _clean_urls(raw: set) -> set:
+            out = set()
+            junk_suffixes = ('"', "'", ")", "(", ",", ";", "<", ">",
+                             "}", "{", "]", "[")
+            for u in raw:
+                if len(u) < 12:          # too short to be real
+                    continue
+                host_part = u.split("//")[-1].split("/")[0]
+                if not host_part or len(host_part) < 4:
+                    continue
+                # Must have a dot in hostname
+                if "." not in host_part:
+                    continue
+                # Strip trailing punctuation noise
+                cleaned = u.rstrip("".join(junk_suffixes))
+                if cleaned:
+                    out.add(cleaned)
+            return out
+
+        # Emails: strip phone-number false positives that slipped through
+        def _clean_emails(raw: set) -> set:
+            out = set()
+            for e in raw:
+                if "@" not in e:
+                    continue
+                local, _, domain = e.partition("@")
+                if not local or not domain:
+                    continue
+                if "." not in domain:
+                    continue
+                # Reject if local part is all digits (phone number)
+                if local.replace("+","").replace("-","").isdigit():
+                    continue
+                out.add(e)
+            return out
+
+        # Contacts: reject all-zero or obviously fake numbers
+        def _clean_contacts(raw: set) -> set:
+            out = set()
+            for c in raw:
+                digits = re.sub(r"\D", "", c)
+                if len(digits) < 7:
+                    continue
+                if len(set(digits)) == 1:   # e.g. 0000000, 1111111
+                    continue
+                out.add(c)
+            return out
+
+        results_set["domains"]  = _clean_domains(results_set["domains"])
+        results_set["urls"]     = _clean_urls(results_set["urls"])
+        results_set["emails"]   = _clean_emails(results_set["emails"])
+        results_set["contacts"] = _clean_contacts(results_set["contacts"])
+
         # fix 5: convert sets → sorted lists BEFORE passing to save_to_json
         final_results = {k: sorted(list(v)) for k, v in results_set.items()}
 
@@ -335,5 +442,8 @@ def analyze_ram_dump_ultra(
         }
 
     except Exception as e:
+        import traceback
         print(f"\n[-] Error during scan: {e}")
+        print("[-] Full traceback:")
+        traceback.print_exc()
         return None

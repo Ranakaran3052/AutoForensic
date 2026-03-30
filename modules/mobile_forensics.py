@@ -1163,7 +1163,7 @@ class MobileForensicsModule:
     def _find_file(self, filename: str) -> Optional[str]:
         """Walk work_dir and return first match (case-insensitive)."""
         fn_lower = filename.lower()
-        for root, _, files in os.walk(self._work_dir):
+        for root, _, files in os.walk(self._work_dir):  # type: ignore
             for f in files:
                 if f.lower() == fn_lower:
                     return os.path.join(root, f)
