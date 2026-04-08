@@ -1,17 +1,3 @@
-logs activity 
-dns activity 
-hashing 
-result 
-meta data 
-Db 
-file generation 
-date and time 
-yara rules  
-cli interface 
-log forensics 
-
-
-registery analysis 
-process monitor 
+star the repo for more updates 
 
   
